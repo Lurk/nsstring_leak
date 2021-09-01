@@ -24,14 +24,14 @@ pub fn leak(str: &str) {
 INSString.as_str() internaly uses UTF8String property of NSString. 
 [Apple doc](https://developer.apple.com/documentation/foundation/nsstring/1411189-utf8string?language=objc)
  says that the memory behind this pointer has a lifetime shorter than a lifetime of an NSString itself. 
-But apparently, this is not entirely true. At least, this statement is not valid from strings that contain 
+But apparently, this is not entirely true. At least, this statement is not valid for strings that contain 
 characters outside the ASCI range. And sometimes for strings that do not.
 
 Sadly, I did not find any reason for that.
 
 So in the end, the actual leak occurs not in INSString.as_str() but, I guess, in objc runtime. 
 
-## Is there a warkaround?
+## Is there a workaround?
 
 Yes. NSString::getCString ([Apple doc](https://developer.apple.com/documentation/foundation/nsstring/1415702-getcstring)) and we can use it like this:
 
