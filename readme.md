@@ -33,7 +33,7 @@ So in the end, the actual leak occurs not in INSString.as_str() but, I guess, in
 
 ## Is there a warkaround?
 
-my proposal is:
+Yes. NSString::getCString ([Apple doc](https://developer.apple.com/documentation/foundation/nsstring/1415702-getcstring)) and we can use it like this:
 
 ```rust
 pub fn nsstring_to_rust_string(nsstring: Id<NSString>) -> String {
