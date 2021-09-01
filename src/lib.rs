@@ -1,7 +1,7 @@
-use objc_foundation::{NSString, INSString};
 use objc::{msg_send, sel, sel_impl};
-use std::ffi::{CString, c_void};
+use objc_foundation::{INSString, NSString};
 use objc_id::Id;
+use std::ffi::{c_void, CString};
 use std::os::raw::c_char;
 
 pub fn leak(str: &str) {
@@ -13,7 +13,6 @@ pub fn no_leak(str: &str) {
     let nsstrig = NSString::from_str(str);
     nsstring_to_rust_string(nsstrig);
 }
-
 
 /**
 Function that converts NSString to rust string through CString to prevent a memory leak.
@@ -32,7 +31,8 @@ pub fn nsstring_to_rust_string(nsstring: Id<NSString>) -> String {
         let string_size: usize = msg_send![nsstring, lengthOfBytesUsingEncoding: 4];
         // + 1 is because getCString returns null terminated string
         let buffer = libc::malloc(string_size + 1) as *mut c_char;
-        let is_success: bool = msg_send![nsstring, getCString:buffer  maxLength:string_size+1 encoding:4];
+        let is_success: bool =
+            msg_send![nsstring, getCString:buffer  maxLength:string_size+1 encoding:4];
         if is_success {
             // CString will take care of memory from now on
             CString::from_raw(buffer).to_str().unwrap().to_owned()
