@@ -9,7 +9,6 @@ edition = "2018"
 objc = "0.2"
 objc_id = "0.1"
 objc-foundation = "0.1"
-libc = "0.2"
 
 [dev-dependencies]
 criterion = "0.3"

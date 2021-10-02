@@ -1,7 +1,5 @@
 # This repo is about reproducible memory leak in objc_foundation`s INSstring.as_str().
 
-
-
 ## how to see a leak
 
 ```shell
@@ -21,7 +19,7 @@ pub fn leak(str: &str) {
 
 ## why it produces a leak?
 
-INSString.as_str() internaly uses UTF8String property of NSString. 
+INSString.as_str() internally uses UTF8String property of NSString. 
 [Apple doc](https://developer.apple.com/documentation/foundation/nsstring/1411189-utf8string?language=objc)
  says that the memory behind this pointer has a lifetime shorter than a lifetime of an NSString itself. 
 But apparently, this is not entirely true. At least, this statement is not valid for strings that contain 
@@ -36,27 +34,32 @@ So in the end, the actual leak occurs not in INSString.as_str() but, I guess, in
 Yes. NSString::getCString ([Apple doc](https://developer.apple.com/documentation/foundation/nsstring/1415702-getcstring)) and we can use it like this:
 
 ```rust
-pub fn nsstring_to_rust_string(nsstring: Id<NSString>) -> String {
-    unsafe {
-        let string_size: usize = msg_send![nsstring, lengthOfBytesUsingEncoding: 4];
-        // + 1 is because getCString returns null terminated string
-        let buffer = libc::malloc(string_size + 1) as *mut c_char;
-        let is_success: bool = msg_send![nsstring, getCString:buffer  maxLength:string_size+1 encoding:4];
-        if is_success {
-            // CString will take care of memory from now on
-            CString::from_raw(buffer).to_str().unwrap().to_owned()
-        } else {
-            // In case getCString failed there is no point in creating CString
-            // So we must free memory
-            libc::free(buffer as *mut c_void);
-            // Original NSString::as_str() swallows all the errors.
-            // Not sure if that is the correct approach, but we also don`t have errors here.
-            "".to_string()
+pub fn convert_with_vec(nsstring: Id<NSString>) -> String {
+    let string_size: usize = unsafe { msg_send![nsstring, lengthOfBytesUsingEncoding: 4] };
+    let mut buffer: Vec<u8> = vec![0_u8; string_size + 1];
+    let is_success: bool = unsafe {
+        msg_send![nsstring, getCString:buffer.as_mut_ptr()  maxLength:string_size+1 encoding:4]
+    };
+    if is_success {
+        // before from_vec_with_nul can be used https://github.com/rust-lang/rust/pull/89292
+        // nul termination from the buffer should be removed by hands
+        buffer.pop();
+
+        unsafe {
+            CString::from_vec_unchecked(buffer)
+                .to_str()
+                .unwrap()
+                .to_string()
         }
+    } else {
+        // In case getCString failed there is no point in creating CString
+        // Original NSString::as_str() swallows all the errors.
+        // Not sure if that is the correct approach, but we also don`t have errors here.
+        "".to_string()
     }
 }
 ```
-If you change in main.rs leak to no_leak and again will run again 
+If you change in main.rs leak to no_leak_vec and will run again 
 ```shell
 cargo instruments -t Allocations
 ```
@@ -67,6 +70,11 @@ cargo becnh
 ```
 You will see that performance even better.
 
+```shell
+to string/old           time:   [12.855 us 12.961 us 13.071 us]                                                    
+to string/new vec       time:   [10.477 us 10.586 us 10.699 us]   
+```
+ 
 
 The only problem I see with this solution is that it has a different return type (String instead of &str). 
 If you know how to fix that, or any other idea on how to do things better - please let me know.  

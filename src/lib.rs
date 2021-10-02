@@ -1,17 +1,16 @@
 use objc::{msg_send, sel, sel_impl};
 use objc_foundation::{INSString, NSString};
 use objc_id::Id;
-use std::ffi::{c_void, CString};
-use std::os::raw::c_char;
+use std::ffi::CString;
 
 pub fn leak(str: &str) {
     let nsstrig = NSString::from_str(str);
     nsstrig.as_str();
 }
 
-pub fn no_leak(str: &str) {
+pub fn no_leak_vec(str: &str) {
     let nsstrig = NSString::from_str(str);
-    nsstring_to_rust_string(nsstrig);
+    convert_with_vec(nsstrig);
 }
 
 /**
@@ -26,24 +25,28 @@ getCString:
    https://developer.apple.com/documentation/foundation/nsstring/1415702-getcstring
 
  */
-pub fn nsstring_to_rust_string(nsstring: Id<NSString>) -> String {
-    unsafe {
-        let string_size: usize = msg_send![nsstring, lengthOfBytesUsingEncoding: 4];
-        // + 1 is because getCString returns null terminated string
-        let buffer = libc::malloc(string_size + 1) as *mut c_char;
-        let is_success: bool =
-            msg_send![nsstring, getCString:buffer  maxLength:string_size+1 encoding:4];
-        if is_success {
-            // CString will take care of memory from now on
-            CString::from_raw(buffer).to_str().unwrap().to_owned()
-        } else {
-            // In case getCString failed there is no point in creating CString
-            // So we must free memory
-            libc::free(buffer as *mut c_void);
-            // Original NSString::as_str() swallows all the errors.
-            // Not sure if that is the correct approach, but we also don`t have errors here.
-            "".to_string()
+pub fn convert_with_vec(nsstring: Id<NSString>) -> String {
+    let string_size: usize = unsafe { msg_send![nsstring, lengthOfBytesUsingEncoding: 4] };
+    let mut buffer: Vec<u8> = vec![0_u8; string_size + 1];
+    let is_success: bool = unsafe {
+        msg_send![nsstring, getCString:buffer.as_mut_ptr()  maxLength:string_size+1 encoding:4]
+    };
+    if is_success {
+        // before from_vec_with_nul can be used https://github.com/rust-lang/rust/pull/89292
+        // nul termination from the buffer should be removed by hands
+        buffer.pop();
+
+        unsafe {
+            CString::from_vec_unchecked(buffer)
+                .to_str()
+                .unwrap()
+                .to_string()
         }
+    } else {
+        // In case getCString failed there is no point in creating CString
+        // Original NSString::as_str() swallows all the errors.
+        // Not sure if that is the correct approach, but we also don`t have errors here.
+        "".to_string()
     }
 }
 
@@ -53,7 +56,7 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let nsstrig = NSString::from_str("aaabbb🍺Ыض");
-        assert_eq!(nsstring_to_rust_string(nsstrig), "aaabbb🍺Ыض");
+        let text = "aaabbb🍺Ыض";
+        assert_eq!(convert_with_vec(NSString::from_str(text)), text);
     }
 }

@@ -188,7 +188,6 @@ name = "foundation"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "libc",
  "objc",
  "objc-foundation",
  "objc_id",
