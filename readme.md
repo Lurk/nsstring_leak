@@ -1,5 +1,12 @@
 # This repo is about reproducible memory leak in objc_foundation`s INSstring.as_str().
 
+## UPD
+
+There is an easier way to avoid the memory leak with objc::rc::autoreleasepool. Here is the original idea https://github.com/SSheldon/rust-objc-foundation/issues/15#issuecomment-943180585 
+
+Added it to the test and benchmark.
+
+
 ## how to see a leak
 
 ```shell
@@ -71,8 +78,9 @@ cargo becnh
 You will see that performance even better.
 
 ```shell
-to string/old           time:   [12.855 us 12.961 us 13.071 us]                                                    
-to string/new vec       time:   [10.477 us 10.586 us 10.699 us]   
+to string/old           time:   [12.551 us 12.644 us 12.733 us]
+to string/autorelease   time:   [12.775 us 12.998 us 13.207 us]
+to string/vec           time:   [10.107 us 10.208 us 10.307 us]    
 ```
  
 
@@ -81,4 +89,4 @@ If you know how to fix that, or any other idea on how to do things better - plea
 
 ## background
 
-If you want to know how it all started - here is initial [blog post](https://barhamon.com/post/rust_and_nsstring) and [pull request to a copypasta](https://github.com/alacritty/copypasta/pull/33).
+If you want to know how it all started - here is initial [blog post](https://barhamon.com/post/rust_and_nsstring),  [pull request to a copypasta](https://github.com/alacritty/copypasta/pull/33). [Autorelease idea](https://github.com/SSheldon/rust-objc-foundation/issues/15#issuecomment-943180585)

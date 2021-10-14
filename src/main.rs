@@ -1,7 +1,7 @@
-use foundation::leak;
+use foundation::no_leak_autoreleasepool;
 
 fn main() {
     for _ in 0..1_000_000 {
-        leak("aaabbb");
+        no_leak_autoreleasepool("aaabbb");
     }
 }

@@ -1,16 +1,26 @@
+use objc::rc::autoreleasepool;
 use objc::{msg_send, sel, sel_impl};
 use objc_foundation::{INSString, NSString};
 use objc_id::Id;
 use std::ffi::CString;
 
 pub fn leak(str: &str) {
-    let nsstrig = NSString::from_str(str);
-    nsstrig.as_str();
+    let nsstring = NSString::from_str(str);
+    nsstring.as_str();
+}
+
+pub fn no_leak_autoreleasepool(str: &str) {
+    let nsstring = NSString::from_str(str);
+    convert_with_autoreleasepool(nsstring);
 }
 
 pub fn no_leak_vec(str: &str) {
-    let nsstrig = NSString::from_str(str);
-    convert_with_vec(nsstrig);
+    let nsstring = NSString::from_str(str);
+    convert_with_vec(nsstring);
+}
+
+pub fn convert_with_autoreleasepool(nsstring: Id<NSString>) -> String {
+    autoreleasepool(move || nsstring.as_str().to_owned())
 }
 
 /**
@@ -58,5 +68,6 @@ mod tests {
     fn it_works() {
         let text = "aaabbb🍺Ыض";
         assert_eq!(convert_with_vec(NSString::from_str(text)), text);
+        assert_eq!(convert_with_autoreleasepool(NSString::from_str(text)), text)
     }
 }
